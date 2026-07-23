@@ -16,17 +16,17 @@
 
 ---
 
-Point an overhead document camera (or any webcam) at a book or a stack of papers. Flipscan watches the video, detects when you turn a page, waits until the image is steady, and takes the shot automatically — so you can scan a whole book without ever touching the shutter. Captures are cleaned up into readable scans (white background, black text, red stamps preserved).
+Point an overhead document camera (or any webcam) at a book or a stack of papers. Flipscan watches the video, detects when you turn a page, waits until the image is steady, and takes the shot automatically — so you can scan a whole book without ever touching the shutter. Optional scan enhancement can clean shots into readable pages (white background, black text, red stamps preserved); it is **off by default**.
 
 ### Features
 
 - **Page-flip auto capture** — a frame-difference state machine (Idle → Watching → Page turning → Settling → Capturing) detects the flip, then fires once the picture holds still.
-- **Scan enhancement** — per-channel illumination normalisation (removes colour cast), background whitening, contrast boost and sharpening. Red seals/stamps survive.
+- **Scan enhancement (optional)** — per-channel illumination normalisation, background whitening, contrast boost and sharpening. Red seals/stamps survive. Default **off**; turn on from the control panel.
 - **Perspective crop + auto-rotate** — finds the paper's four corners, flattens it, and turns landscape shots upright. Crop and scan enhancement are independent toggles; auto-rotate is a sub-option of crop and only applies when crop is on.
 - **Session gallery** — thumbnails of what you just shot plus earlier sessions, with click-to-zoom, multi-select delete and delete-all.
 - **Bilingual UI** — follows your system locale (Chinese if `LANG` contains `zh`/`cn`, otherwise English).
-- **Switch cameras without restarting** — pick another camera from the control panel and the live view moves over instantly; tick *Remember this camera* and it is used automatically next time.
-- **Organised settings popup** — *General* contains capture-on-start and camera selection, *Advanced* contains page-detection tuning and reset, and *Other* contains update controls. It opens as one reusable popup and occupies no space in the capture window while closed.
+- **Switch cameras without restarting** — pick another camera under **Settings → Capture**, and the live view moves over instantly; tick *Remember this camera* and it is used automatically next time.
+- **Settings popup** — Capture (camera, start-on-open, shutter delay), Detection (flip-tuning knobs), and Other (updates). Opens as one reusable popup; closed it takes no space in the capture window.
 - **Camera hand-off** — if another app is holding the camera you can take it over and give it back; Eloam vendor software is paused and restored automatically.
 - **Optional AI analysis** — `analyze_papers.py` sends pages (images, PDF or video) to Gemini and prints the analysis.
 
@@ -131,19 +131,20 @@ Captures are saved to `拍照结果/` on a Chinese system and `Captures/` otherw
 
 ### Tuning the flip detection
 
-There are no command-line knobs for this. The detection parameters are plain constants at the top of `flipscan.py` — edit them and restart:
+Prefer **Settings → Detection** in the app (values persist under `~/.config/flipscan/`). Defaults match the constants in `flipscan.py` if you edit the source instead:
 
-| Constant | Default | Meaning |
+| Setting / constant | Default | Meaning |
 |---|---|---|
 | `MOTION_THRESHOLD` | `300` | Motion level above which the frame counts as "moving". |
 | `MIN_FLIP_MOTION` | `8000` | Peak motion a gesture must reach to be treated as a page flip. |
 | `MIN_FLIP_SECONDS` | `0.3` | Shortest movement still accepted as a flip. |
 | `STABLE_SECONDS` | `0.8` | How long the picture must hold still before the shutter fires. |
+| `CAPTURE_DELAY` | (see Settings) | Extra wait after settle before the shutter (Settings → Capture). |
 | `DIFF_THRESH` | `35` | Per-pixel difference threshold. |
 | `MOTION_SMOOTH` | `6` | Frames of smoothing on the motion signal. |
 | `DETECT_RES` | `(480, 360)` | Resolution the detector runs at (preview/capture stay full-res). |
 
-Raise `MIN_FLIP_MOTION` if stray hand movement triggers shots; lower it if real flips are missed. Raise `STABLE_SECONDS` if pages are still wobbling when the shot is taken.
+Raise `MIN_FLIP_MOTION` if stray hand movement triggers shots; lower it if real flips are missed. Raise `STABLE_SECONDS` / shutter delay if pages are still wobbling when the shot is taken.
 
 ### AI analysis (optional)
 
@@ -157,20 +158,19 @@ Analysis is a separate step — the capture window does not call it.
 
 Flipscan updates itself in place — you never have to re-clone.
 
-- **Checking.** A few seconds after launch it asks GitHub for the latest release and posts a
-  desktop notification if there is a newer one. Nothing is downloaded and nothing is changed
-  on its own; the check runs on a background thread, and no network, a timeout or GitHub
-  rate-limiting are all skipped silently — a failed update check can never stop you scanning.
-- **Turning it off.** Sidebar → **Check for updates at startup** (on by default). The installer
-  also asks once. With it off, Flipscan only goes online when you press the button below.
-- **Updating.** Sidebar → **Check for updates** checks immediately and offers to install.
-  A git checkout is updated with `git pull --ff-only`; any other copy downloads the release
-  tarball and overlays it. **Your captured photos and settings (`~/.config/flipscan/`) are never
-  touched**, and the files that are replaced are backed up next to the install directory first.
-  Restart Flipscan for the new version to take effect.
+- **Automatic (default on).** A few seconds after launch it asks GitHub for the latest
+  release. If a newer one exists and the install directory is writable, it **downloads and
+  installs quietly** (no desktop notification). Photos and `~/.config/flipscan/` are
+  preserved. Restart Flipscan to run the new files. Network/timeout/unwritable failures are
+  skipped silently.
+- **Turning it off.** **Settings → Other → Update automatically** (on by default). The
+  installer also asks once. With it off, Flipscan only goes online for a manual check.
+- **Manual.** **Settings → Other → Check for updates** checks immediately and can install
+  (git `pull --ff-only` or release tarball overlay, with a backup beside the install
+  directory).
 
-If Flipscan is installed in a system directory such as `/opt`, the in-place update needs admin
-rights; re-run `install.sh` with `sudo` instead.
+If Flipscan is installed in a system directory such as `/opt`, in-place update needs write
+permission; re-run `install.sh` with `sudo` instead.
 
 ### Note for Eloam users
 

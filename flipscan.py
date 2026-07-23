@@ -1760,7 +1760,6 @@ class App:
 
         # 一键回到高拍仪的默认参数——调乱了不用自己回想原值是多少。
         def _reset_tuning():
-            from tkinter import messagebox
             for key in ("motion_threshold", "settle_frames", "capture_delay"):
                 self.cfg[key] = None
             save_config(self.cfg)
@@ -1769,10 +1768,15 @@ class App:
                                  ("capture_delay", CAPTURE_DELAY)):
                 if key in self._tune_vars:
                     self._tune_vars[key].set(float(default))
-            messagebox.showinfo(
-                _t("恢复默认", "Reset"),
-                _t("已恢复为高拍仪的默认参数。",
-                   "Document-camera defaults restored."))
+            # No OK dialog for settings changes — brief title flash only.
+            old = self.settings_win.title() if hasattr(self, "settings_win") else ""
+            try:
+                self.settings_win.title(_t("已恢复默认参数", "Defaults restored"))
+                self.settings_win.after(
+                    1600, lambda: self.settings_win.title(old or _t("设置", "Settings"))
+                )
+            except Exception:
+                pass
         tk.Button(
             parent, text=_t("恢复默认参数", "Reset to defaults"),
             font=("Sans", 9), fg=C["mid"], bg=C["cbg"],
@@ -1869,13 +1873,6 @@ class App:
             messagebox.showinfo(title, _t(
                 f"已经是最新版本（{__version__}）。",
                 f"You are on the latest version ({__version__})."))
-            return
-        if not messagebox.askyesno(title, _t(
-                f"有新版本：{release['version']}（当前 {__version__}）。\n\n"
-                "更新只替换程序文件，你拍的照片和设置都不会动。现在更新吗？",
-                f"New version available: {release['version']} (you have "
-                f"{__version__}).\n\nUpdating replaces program files only; your "
-                "photos and settings are left alone. Update now?")):
             return
         base = os.path.dirname(os.path.abspath(__file__))
         if not enum_update.writable(base):
@@ -3068,12 +3065,13 @@ class App:
                     self.state       = State.FLIPPING
                     self.flip_start  = time.time()
                     self.peak_motion = motion
-                elif time.time() - self.stable_t >= STABLE_SECONDS:
+                elif time.time() - self.stable_t >= STABLE_SECONDS + CAPTURE_DELAY:
                     self.state = State.CAPTURING
 
         progress = 0.0
         if self.state == State.STABILIZING and self.stable_t:
-            progress = min((time.time() - self.stable_t) / STABLE_SECONDS, 1.0)
+            wait = STABLE_SECONDS + CAPTURE_DELAY
+            progress = min((time.time() - self.stable_t) / wait, 1.0) if wait > 0 else 1.0
 
         if self.state == State.CAPTURING:
             out  = process_captured(frame,
@@ -3268,12 +3266,7 @@ def _open_camera_with_policy(camera):
         return None
 
 def maybe_check_updates(cfg):
-    """启动时到 GitHub 看一眼有没有新版本，有就发条桌面通知。
-
-    跑在 daemon 线程里，还先睡 15 秒：开摄像头、出预览画面比"有没有新版本"
-    重要得多。查不到就什么都不发生——没网时用户要的是能正常拍照，不是一个
-    "检查更新失败"的弹窗。
-    """
+    """启动时静默自动更新：有新版且目录可写则直接装，不通知、不确认。"""
     if not cfg.get("auto_check_updates", True):
         return
 
