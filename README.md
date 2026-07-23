@@ -53,7 +53,7 @@ bash install.sh --uninstall         # remove icons / menu entry / autostart
 bash install.sh --help              # usage
 ```
 
-`--uninstall` only removes what the matching mode installed, so to undo a system install use
+`--uninstall` (GUI confirmation when a display is available) only removes what the matching mode installed, so to undo a system install use
 `bash install.sh --system --uninstall`. When `--prefix` or `--system` is given alongside
 `--uninstall`, the copied program directory is deleted too.
 </details>
